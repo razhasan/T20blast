@@ -1,0 +1,402 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>FIFA World Cup 2026 — Bracket Predictor</title>
+<style>
+  @import url('https://fonts.googleapis.com/css2?family=Bebas+Neue&family=Inter:wght@300;400;500;600;700&display=swap');
+  :root {
+    --gold: #C8972A; --gold-light: #F0C842; --dark: #0A0C14; --panel: #12151F;
+    --panel2: #1A1E2E; --border: #252A3A; --text: #E8EAF0; --muted: #5A607A;
+    --win-border: #2ECC71; --hover: #1E2438;
+  }
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body { background: var(--dark); color: var(--text); font-family: 'Inter', sans-serif; min-height: 100vh; }
+  header {
+    background: linear-gradient(135deg, #0A0C14 0%, #0f1424 50%, #0A0C14 100%);
+    border-bottom: 1px solid var(--border); position: relative; overflow: hidden;
+  }
+  header::before {
+    content: ''; position: absolute; inset: 0;
+    background: radial-gradient(ellipse at 50% -30%, rgba(200,151,42,0.18) 0%, transparent 70%);
+  }
+  .header-inner { max-width: 1600px; margin: 0 auto; padding: 28px 32px; display: flex; align-items: center; gap: 20px; }
+  .trophy-icon { font-size: 48px; filter: drop-shadow(0 0 18px rgba(200,151,42,0.7)); }
+  .header-text h1 { font-family: 'Bebas Neue', sans-serif; font-size: 42px; letter-spacing: 3px; color: var(--gold-light); line-height: 1; text-shadow: 0 0 30px rgba(200,151,42,0.4); }
+  .header-text p { font-size: 13px; color: var(--muted); letter-spacing: 2px; text-transform: uppercase; margin-top: 4px; }
+  .header-badge { margin-left: auto; background: var(--gold); color: #000; font-family: 'Bebas Neue', sans-serif; font-size: 13px; letter-spacing: 1.5px; padding: 6px 14px; border-radius: 4px; }
+  .progress-bar-wrap { background: var(--panel2); border-bottom: 1px solid var(--border); padding: 10px 32px; }
+  .progress-bar-inner { max-width: 1600px; margin: 0 auto; display: flex; align-items: center; gap: 16px; }
+  .progress-label { font-size: 11px; color: var(--muted); letter-spacing: 1px; text-transform: uppercase; }
+  .progress-track { flex: 1; height: 4px; background: var(--border); border-radius: 2px; overflow: hidden; }
+  .progress-fill { height: 100%; background: linear-gradient(90deg, var(--gold), var(--gold-light)); border-radius: 2px; transition: width 0.4s ease; }
+  .progress-pct { font-size: 12px; color: var(--gold); font-weight: 600; }
+  .round-nav { background: var(--panel); border-bottom: 1px solid var(--border); position: sticky; top: 0; z-index: 100; }
+  .round-nav-inner { max-width: 1600px; margin: 0 auto; padding: 0 32px; display: flex; overflow-x: auto; }
+  .round-tab { padding: 16px 22px; font-size: 12px; font-weight: 600; letter-spacing: 1.5px; text-transform: uppercase; color: var(--muted); cursor: pointer; border-bottom: 3px solid transparent; white-space: nowrap; transition: all 0.2s; user-select: none; }
+  .round-tab:hover { color: var(--text); }
+  .round-tab.active { color: var(--gold-light); border-bottom-color: var(--gold); }
+  .round-tab .badge { display: inline-block; background: var(--border); border-radius: 10px; font-size: 10px; padding: 1px 6px; margin-left: 6px; color: var(--muted); }
+  .round-tab.active .badge { background: rgba(200,151,42,0.2); color: var(--gold); }
+  main { max-width: 1600px; margin: 0 auto; padding: 32px; }
+  .round-section { display: none; }
+  .round-section.active { display: block; }
+  .round-header { display: flex; align-items: center; gap: 16px; margin-bottom: 28px; }
+  .round-header h2 { font-family: 'Bebas Neue', sans-serif; font-size: 30px; letter-spacing: 2px; color: var(--text); }
+  .round-header .line { flex: 1; height: 1px; background: linear-gradient(to right, var(--border), transparent); }
+  .round-header .count { font-size: 12px; color: var(--muted); letter-spacing: 1px; text-transform: uppercase; }
+  .match-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(320px, 1fr)); gap: 14px; }
+  .match-card { background: var(--panel); border: 1px solid var(--border); border-radius: 10px; overflow: hidden; transition: border-color 0.2s; }
+  .match-card:hover { border-color: var(--muted); }
+  .match-card.complete { border-color: rgba(200,151,42,0.3); }
+  .match-label { background: var(--panel2); border-bottom: 1px solid var(--border); padding: 8px 14px; font-size: 10px; font-weight: 600; letter-spacing: 2px; text-transform: uppercase; color: var(--muted); display: flex; justify-content: space-between; align-items: center; }
+  .match-date { font-size: 10px; color: rgba(200,151,42,0.7); }
+  .team-option { display: flex; align-items: center; gap: 12px; padding: 12px 14px; cursor: pointer; transition: background 0.15s; position: relative; }
+  .team-option:first-of-type { border-bottom: 1px solid var(--border); }
+  .team-option:hover { background: var(--hover); }
+  .team-option.selected { background: rgba(46,204,113,0.07); }
+  .team-option.selected::after { content: ''; position: absolute; left: 0; top: 0; bottom: 0; width: 3px; background: var(--win-border); border-radius: 0 2px 2px 0; }
+  .team-option.loser { opacity: 0.35; }
+  .flag-emoji { width: 32px; font-size: 22px; display: flex; align-items: center; justify-content: center; flex-shrink: 0; }
+  .team-name { flex: 1; font-size: 14px; font-weight: 500; color: var(--text); }
+  .team-option.selected .team-name { color: #fff; font-weight: 600; }
+  .team-option.tbd .team-name { color: var(--muted); font-style: italic; }
+  .radio-circle { width: 18px; height: 18px; border-radius: 50%; border: 2px solid var(--border); flex-shrink: 0; display: flex; align-items: center; justify-content: center; transition: all 0.2s; }
+  .team-option.selected .radio-circle { border-color: var(--win-border); background: var(--win-border); }
+  .radio-dot { width: 8px; height: 8px; border-radius: 50%; background: #fff; display: none; }
+  .team-option.selected .radio-dot { display: block; }
+  .advance-banner { display: none; background: rgba(200,151,42,0.1); border: 1px solid rgba(200,151,42,0.3); border-radius: 8px; padding: 14px 20px; margin-bottom: 24px; font-size: 13px; color: var(--gold-light); align-items: center; gap: 10px; }
+  .advance-banner.show { display: flex; }
+  .advance-banner button { margin-left: auto; background: var(--gold); color: #000; border: none; border-radius: 5px; font-family: 'Bebas Neue', sans-serif; font-size: 13px; letter-spacing: 1px; padding: 7px 16px; cursor: pointer; }
+  .advance-banner button:hover { background: var(--gold-light); }
+  #winner-section { display: none; text-align: center; padding: 60px 32px; animation: fadeUp 0.6s ease; }
+  @keyframes fadeUp { from { opacity:0; transform: translateY(30px); } to { opacity:1; transform: translateY(0); } }
+  .winner-trophy { font-size: 90px; margin-bottom: 20px; filter: drop-shadow(0 0 30px rgba(200,151,42,0.8)); }
+  .winner-label { font-family: 'Bebas Neue', sans-serif; font-size: 16px; letter-spacing: 5px; color: var(--gold); text-transform: uppercase; margin-bottom: 12px; }
+  .winner-flag-big { font-size: 80px; display: block; margin: 16px auto; }
+  .winner-name { font-family: 'Bebas Neue', sans-serif; font-size: 64px; letter-spacing: 4px; color: #fff; text-shadow: 0 0 40px rgba(200,151,42,0.5); }
+  .winner-sub { font-size: 14px; color: var(--muted); letter-spacing: 1px; margin-top: 12px; }
+  .confetti-line { display: flex; justify-content: center; gap: 10px; font-size: 28px; margin: 20px 0; animation: pulse 1.5s ease-in-out infinite; }
+  @keyframes pulse { 0%,100% { opacity:1; } 50% { opacity:0.6; } }
+  .btn-reset { background: transparent; border: 1px solid var(--border); color: var(--muted); font-family: 'Inter', sans-serif; font-size: 12px; font-weight: 600; letter-spacing: 1.5px; text-transform: uppercase; padding: 10px 20px; border-radius: 6px; cursor: pointer; transition: all 0.2s; margin-top: 28px; }
+  .btn-reset:hover { border-color: var(--gold); color: var(--gold); }
+  @media (max-width: 700px) {
+    .header-inner { padding: 20px 16px; } .header-text h1 { font-size: 28px; }
+    main { padding: 16px; } .match-grid { grid-template-columns: 1fr; }
+    .round-nav-inner { padding: 0 8px; } .round-tab { padding: 14px 12px; font-size: 11px; }
+  }
+</style>
+</head>
+<body>
+
+<header>
+  <div class="header-inner">
+    <div class="trophy-icon">🏆</div>
+    <div class="header-text">
+      <h1>FIFA World Cup 2026</h1>
+      <p>USA · Canada · Mexico &nbsp;·&nbsp; Bracket Predictor</p>
+    </div>
+    <div class="header-badge">48 TEAMS</div>
+  </div>
+</header>
+
+<div class="progress-bar-wrap">
+  <div class="progress-bar-inner">
+    <span class="progress-label">Bracket completion</span>
+    <div class="progress-track"><div class="progress-fill" id="progressFill" style="width:0%"></div></div>
+    <span class="progress-pct" id="progressPct">0%</span>
+  </div>
+</div>
+
+<div class="round-nav">
+  <div class="round-nav-inner">
+    <div class="round-tab active" data-round="r32" onclick="showRound('r32')">Round of 32 <span class="badge" id="tab-badge-r32">0/16</span></div>
+    <div class="round-tab" data-round="r16" onclick="showRound('r16')">Round of 16 <span class="badge" id="tab-badge-r16">0/8</span></div>
+    <div class="round-tab" data-round="qf" onclick="showRound('qf')">Quarterfinals <span class="badge" id="tab-badge-qf">0/4</span></div>
+    <div class="round-tab" data-round="sf" onclick="showRound('sf')">Semifinals <span class="badge" id="tab-badge-sf">0/2</span></div>
+    <div class="round-tab" data-round="final" onclick="showRound('final')">Final <span class="badge" id="tab-badge-final">0/1</span></div>
+    <div class="round-tab" data-round="winner" onclick="showRound('winner')">🏆 Champion</div>
+  </div>
+</div>
+
+<main>
+  <div class="round-section active" id="section-r32">
+    <div class="round-header"><h2>Round of 32</h2><div class="line"></div><div class="count">16 Matches · Jun 28 – Jul 3</div></div>
+    <div class="advance-banner" id="banner-r32"><span>✅ All Round of 32 picks complete!</span><button onclick="showRound('r16')">Go to Round of 16 →</button></div>
+    <div class="match-grid" id="grid-r32"></div>
+  </div>
+  <div class="round-section" id="section-r16">
+    <div class="round-header"><h2>Round of 16</h2><div class="line"></div><div class="count">8 Matches</div></div>
+    <div class="advance-banner" id="banner-r16"><span>✅ All Round of 16 picks complete!</span><button onclick="showRound('qf')">Go to Quarterfinals →</button></div>
+    <div class="match-grid" id="grid-r16"></div>
+  </div>
+  <div class="round-section" id="section-qf">
+    <div class="round-header"><h2>Quarterfinals</h2><div class="line"></div><div class="count">4 Matches</div></div>
+    <div class="advance-banner" id="banner-qf"><span>✅ All Quarterfinal picks complete!</span><button onclick="showRound('sf')">Go to Semifinals →</button></div>
+    <div class="match-grid" id="grid-qf"></div>
+  </div>
+  <div class="round-section" id="section-sf">
+    <div class="round-header"><h2>Semifinals</h2><div class="line"></div><div class="count">2 Matches</div></div>
+    <div class="advance-banner" id="banner-sf"><span>✅ All Semifinal picks complete!</span><button onclick="showRound('final')">Go to the Final →</button></div>
+    <div class="match-grid" id="grid-sf"></div>
+  </div>
+  <div class="round-section" id="section-final">
+    <div class="round-header"><h2>The Final</h2><div class="line"></div><div class="count">MetLife Stadium · July 19</div></div>
+    <div class="advance-banner" id="banner-final"><span>✅ Champion selected!</span><button onclick="showRound('winner')">See Your Champion 🏆</button></div>
+    <div class="match-grid" id="grid-final" style="max-width:380px;"></div>
+  </div>
+  <div class="round-section" id="section-winner">
+    <div id="winner-section">
+      <div class="confetti-line">🎉 🥇 🌟 🥇 🎉</div>
+      <div class="winner-trophy">🏆</div>
+      <div class="winner-label">FIFA World Cup 2026 Champion</div>
+      <div class="winner-flag-big" id="winnerFlag"></div>
+      <div class="winner-name" id="winnerName">—</div>
+      <div class="winner-sub">USA · Canada · Mexico 2026</div>
+      <div class="confetti-line">🎊 ⭐ 🎊 ⭐ 🎊</div>
+      <button class="btn-reset" onclick="resetAll()">↩ Reset Bracket</button>
+    </div>
+  </div>
+</main>
+
+<script>
+// ─── TEAMS ───────────────────────────────────────────────────────────────────
+const T = {
+  CAN: { name: 'Canada',              flag: '🇨🇦' },
+  RSA: { name: 'South Africa',        flag: '🇿🇦' },
+  BRA: { name: 'Brazil',              flag: '🇧🇷' },
+  JPN: { name: 'Japan',               flag: '🇯🇵' },
+  GER: { name: 'Germany',             flag: '🇩🇪' },
+  PAR: { name: 'Paraguay',            flag: '🇵🇾' },
+  NED: { name: 'Netherlands',         flag: '🇳🇱' },
+  MAR: { name: 'Morocco',             flag: '🇲🇦' },
+  CIV: { name: "Ivory Coast",         flag: '🇨🇮' },
+  NOR: { name: 'Norway',              flag: '🇳🇴' },
+  FRA: { name: 'France',              flag: '🇫🇷' },
+  SWE: { name: 'Sweden',              flag: '🇸🇪' },
+  MEX: { name: 'Mexico',              flag: '🇲🇽' },
+  ECU: { name: 'Ecuador',             flag: '🇪🇨' },
+  ENG: { name: 'England',             flag: '🏴󠁧󠁢󠁥󠁮󠁧󠁿' },
+  SEN: { name: 'Senegal',             flag: '🇸🇳' },
+  BEL: { name: 'Belgium',             flag: '🇧🇪' },
+  USA: { name: 'United States',       flag: '🇺🇸' },
+  BIH: { name: 'Bosnia & Herz.',      flag: '🇧🇦' },
+  ESP: { name: 'Spain',               flag: '🇪🇸' },
+  AUT: { name: 'Austria',             flag: '🇦🇹' },
+  POR: { name: 'Portugal',            flag: '🇵🇹' },
+  CRO: { name: 'Croatia',             flag: '🇭🇷' },
+  BRA: { name: 'Brazil',              flag: '🇧🇷' },
+  JPN: { name: 'Japan',               flag: '🇯🇵' },
+  SUI: { name: 'Switzerland',         flag: '🇨🇭' },
+  ALG: { name: 'Algeria',             flag: '🇩🇿' },
+  COL: { name: 'Colombia',            flag: '🇨🇴' },
+  GHA: { name: 'Ghana',               flag: '🇬🇭' },
+  AUS: { name: 'Australia',           flag: '🇦🇺' },
+  EGY: { name: 'Egypt',               flag: '🇪🇬' },
+  ARG: { name: 'Argentina',           flag: '🇦🇷' },
+  CPV: { name: 'Cabo Verde',          flag: '🇨🇻' },
+  COD: { name: 'DR Congo',            flag: '🇨🇩' },
+};
+
+// ─── ROUND OF 32 MATCHUPS (official confirmed order) ─────────────────────────
+// Bracket pairing: matches 1+2 feed R16 match 1, matches 3+4 feed R16 match 2, etc.
+const R32 = [
+  // R16-A: Winner M1 vs Winner M2
+  { id:'r32-01', label:'Match 1',  date:'Jun 28', t1:'RSA', t2:'CAN' },  // → R16-1 top
+  { id:'r32-02', label:'Match 2',  date:'Jun 29', t1:'NED', t2:'MAR' },  // → R16-1 bot
+  // R16-B: Winner M3 vs Winner M4
+  { id:'r32-03', label:'Match 3',  date:'Jun 29', t1:'GER', t2:'PAR' },  // → R16-2 top
+  { id:'r32-04', label:'Match 4',  date:'Jun 30', t1:'FRA', t2:'SWE' },  // → R16-2 bot
+  // R16-C: Winner M5 vs Winner M6
+  { id:'r32-05', label:'Match 5',  date:'Jul 1',  t1:'BEL', t2:'SEN' },  // → R16-3 top
+  { id:'r32-06', label:'Match 6',  date:'Jul 2',  t1:'USA', t2:'BIH' },  // → R16-3 bot
+  // R16-D: Winner M7 vs Winner M8
+  { id:'r32-07', label:'Match 7',  date:'Jul 2',  t1:'ESP', t2:'AUT' },  // → R16-4 top
+  { id:'r32-08', label:'Match 8',  date:'Jul 3',  t1:'POR', t2:'CRO' },  // → R16-4 bot
+  // R16-E: Winner M9 vs Winner M10
+  { id:'r32-09', label:'Match 9',  date:'Jun 29', t1:'BRA', t2:'JPN' },  // → R16-5 top
+  { id:'r32-10', label:'Match 10', date:'Jun 30', t1:'CIV', t2:'NOR' },  // → R16-5 bot
+  // R16-F: Winner M11 vs Winner M12
+  { id:'r32-11', label:'Match 11', date:'Jul 1',  t1:'MEX', t2:'ECU' },  // → R16-6 top
+  { id:'r32-12', label:'Match 12', date:'Jul 1',  t1:'ENG', t2:'COD' },  // → R16-6 bot
+  // R16-G: Winner M13 vs Winner M14
+  { id:'r32-13', label:'Match 13', date:'Jul 3',  t1:'SUI', t2:'ALG' },  // → R16-7 top
+  { id:'r32-14', label:'Match 14', date:'Jul 4',  t1:'COL', t2:'GHA' },  // → R16-7 bot
+  // R16-H: Winner M15 vs Winner M16
+  { id:'r32-15', label:'Match 15', date:'Jul 3',  t1:'AUS', t2:'EGY' },  // → R16-8 top
+  { id:'r32-16', label:'Match 16', date:'Jul 4',  t1:'ARG', t2:'CPV' },  // → R16-8 bot
+];
+
+const picks = {};
+
+function getIds(round) {
+  if (round === 'r32') return R32.map(m => m.id);
+  const counts = { r16:8, qf:4, sf:2, final:1 };
+  return Array.from({length: counts[round]}, (_, i) => `${round}-${String(i+1).padStart(2,'0')}`);
+}
+
+function prevRound(r) { return { r16:'r32', qf:'r16', sf:'qf', final:'sf' }[r]; }
+function nextRound(r) { return { r32:'r16', r16:'qf', qf:'sf', sf:'final' }[r]; }
+
+// ─── BUILD ───────────────────────────────────────────────────────────────────
+function buildR32() {
+  const grid = document.getElementById('grid-r32');
+  grid.innerHTML = '';
+  R32.forEach(m => grid.appendChild(makeCard(m.id, m.label, m.date, m.t1, m.t2, 'r32')));
+}
+
+function buildLater() {
+  ['r16','qf','sf','final'].forEach(round => {
+    const grid = document.getElementById('grid-' + round);
+    grid.innerHTML = '';
+    const prev = prevRound(round);
+    const prevIds = getIds(prev);
+    getIds(round).forEach((mid, i) => {
+      const t1 = picks[prevIds[i*2]] || null;
+      const t2 = picks[prevIds[i*2+1]] || null;
+      grid.appendChild(makeCard(mid, `Match ${i+1}`, '', t1, t2, round));
+    });
+  });
+}
+
+function makeCard(matchId, label, date, t1Code, t2Code, round) {
+  const card = document.createElement('div');
+  card.className = 'match-card' + (picks[matchId] ? ' complete' : '');
+  card.id = 'card-' + matchId;
+  card.innerHTML = `
+    <div class="match-label">
+      <span>${label}</span>
+      ${date ? `<span class="match-date">${date}</span>` : ''}
+    </div>
+    ${row(matchId, t1Code, round)}
+    ${row(matchId, t2Code, round)}`;
+  return card;
+}
+
+function row(matchId, code, round) {
+  if (!code) {
+    return `<div class="team-option tbd">
+      <div class="flag-emoji">⬜</div>
+      <span class="team-name">TBD</span>
+      <div class="radio-circle"><div class="radio-dot"></div></div>
+    </div>`;
+  }
+  const team = T[code];
+  const sel = picks[matchId] === code;
+  const los = picks[matchId] && !sel;
+  return `<div class="team-option ${sel?'selected':''} ${los?'loser':''}"
+    data-code="${code}" onclick="pick('${matchId}','${code}','${round}')">
+    <div class="flag-emoji">${team.flag}</div>
+    <span class="team-name">${team.name}</span>
+    <div class="radio-circle"><div class="radio-dot"></div></div>
+  </div>`;
+}
+
+// ─── PICK ────────────────────────────────────────────────────────────────────
+function pick(matchId, code, round) {
+  picks[matchId] = code;
+
+  // Refresh this card's visuals
+  const card = document.getElementById('card-' + matchId);
+  if (card) {
+    card.querySelectorAll('.team-option[data-code]').forEach(el => {
+      el.classList.toggle('selected', el.dataset.code === code);
+      el.classList.toggle('loser', el.dataset.code !== code);
+    });
+    card.classList.add('complete');
+  }
+
+  // Propagate to next round
+  const nr = nextRound(round);
+  if (!nr) { if (round === 'final') revealWinner(code); return; }
+
+  const allIds = getIds(round);
+  const idx = allIds.indexOf(matchId);
+  const nextIdx = Math.floor(idx / 2);
+  const nextId = `${nr}-${String(nextIdx+1).padStart(2,'0')}`;
+  const nrPrevIds = getIds(round); // same as allIds
+  const t1 = picks[nrPrevIds[nextIdx*2]] || null;
+  const t2 = picks[nrPrevIds[nextIdx*2+1]] || null;
+
+  // If prior winner in next round no longer valid, cascade clear
+  if (picks[nextId] && picks[nextId] !== t1 && picks[nextId] !== t2) {
+    cascadeClear(nextId, nr);
+  }
+
+  const grid = document.getElementById('grid-' + nr);
+  let existing = document.getElementById('card-' + nextId);
+  const newCard = makeCard(nextId, `Match ${nextIdx+1}`, '', t1, t2, nr);
+  if (existing) existing.replaceWith(newCard);
+  else grid.appendChild(newCard);
+
+  updateProgress();
+  checkBanners();
+}
+
+function cascadeClear(matchId, round) {
+  delete picks[matchId];
+  const nr = nextRound(round);
+  if (!nr) return;
+  const allIds = getIds(round);
+  const idx = allIds.indexOf(matchId);
+  const nextId = `${nr}-${String(Math.floor(idx/2)+1).padStart(2,'0')}`;
+  if (picks[nextId]) cascadeClear(nextId, nr);
+}
+
+function revealWinner(code) {
+  const team = T[code];
+  document.getElementById('winnerFlag').textContent = team.flag;
+  document.getElementById('winnerName').textContent = team.name;
+  document.getElementById('winner-section').style.display = 'block';
+}
+
+// ─── UI ──────────────────────────────────────────────────────────────────────
+function showRound(round) {
+  if (['r16','qf','sf','final'].includes(round)) buildLater();
+  document.querySelectorAll('.round-section').forEach(s => s.classList.remove('active'));
+  document.querySelectorAll('.round-tab').forEach(t => t.classList.remove('active'));
+  document.getElementById('section-' + round).classList.add('active');
+  document.querySelector(`[data-round="${round}"]`).classList.add('active');
+  if (round === 'winner') {
+    const w = picks['final-01'];
+    document.getElementById('winner-section').style.display = 'block';
+    if (w) revealWinner(w);
+    else { document.getElementById('winnerFlag').textContent = '❓'; document.getElementById('winnerName').textContent = 'Pick the Final first!'; }
+  }
+}
+
+function updateProgress() {
+  const total = 31;
+  const done = Object.keys(picks).length;
+  const pct = Math.round(done / total * 100);
+  document.getElementById('progressFill').style.width = pct + '%';
+  document.getElementById('progressPct').textContent = pct + '%';
+  const rounds = ['r32','r16','qf','sf','final'];
+  const totals = [16,8,4,2,1];
+  rounds.forEach((r,i) => {
+    document.getElementById('tab-badge-'+r).textContent = `${getIds(r).filter(id=>picks[id]).length}/${totals[i]}`;
+  });
+}
+
+function checkBanners() {
+  [['r32',16],['r16',8],['qf',4],['sf',2],['final',1]].forEach(([r,t]) => {
+    const done = getIds(r).filter(id=>picks[id]).length;
+    document.getElementById('banner-'+r).classList.toggle('show', done===t);
+  });
+}
+
+function resetAll() {
+  Object.keys(picks).forEach(k => delete picks[k]);
+  buildR32(); buildLater(); updateProgress(); checkBanners();
+  document.getElementById('winner-section').style.display = 'none';
+  showRound('r32');
+}
+
+// ─── INIT ────────────────────────────────────────────────────────────────────
+buildR32();
+buildLater();
+updateProgress();
+</script>
+</body>
+</html>
