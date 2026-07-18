@@ -384,29 +384,6 @@
             pointer-events: none;
             z-index: 6;
         }
-        /* Pixi conversion — Step 1 (blank canvas alongside existing render).
-           Sits above everything else so it's trivially visible for the
-           smoke test, but pointer-events:none means it can never intercept
-           taps/drags meant for the existing game. Fully non-invasive. */
-        #pixi-layer {
-            position: absolute;
-            inset: 0;
-            width: 100%;
-            height: 100%;
-            pointer-events: none;
-            z-index: 9;
-        }
-        #pixi-status-badge {
-            position: absolute;
-            top: 6px;
-            right: 8px;
-            font: 11px/1.4 monospace;
-            color: #baffc9;
-            background: rgba(0, 0, 0, 0.35);
-            padding: 2px 6px;
-            border-radius: 6px;
-            z-index: 10;
-        }
         .pitch-figure {
             position: absolute;
             pointer-events: none;
@@ -1527,10 +1504,6 @@
                 <canvas id="pitch-canvas" width="500" height="560"></canvas>
                 <svg id="drag-indicator-svg" class="stage-overlay-svg" viewBox="0 0 500 560" preserveAspectRatio="none"></svg>
                 <svg id="bat-trail-svg" class="stage-overlay-svg" viewBox="0 0 500 560" preserveAspectRatio="none"></svg>
-                <!-- Pixi conversion — Step 1: blank Pixi canvas mounted alongside
-                     the existing #pitch-canvas render. See pixi-renderer.js. -->
-                <div id="pixi-layer"></div>
-                <div id="pixi-status-badge" style="display:none;"></div>
                 <div class="pitch-figure figure-bowler" id="figure-bowler"></div>
                 <div class="pitch-figure figure-keeper" id="figure-keeper"></div>
                 <div class="pitch-figure figure-batsman" id="figure-batsman"></div>
@@ -1684,19 +1657,6 @@
             <button class="btn-continue" onclick="closeWicketCard()">Continue</button>
         </div>
     </div>
-
-    <!-- ===== PixiJS conversion — Step 1 of CONVERSION_GUIDE.md build order =====
-         Additive only: nothing below removes or edits existing game logic.
-         PixiJS is loaded from a CDN (no build step), and pixi-renderer.js
-         exposes window.pixiRenderer.renderMatchFrame(state), which is called
-         once at the end of the existing drawPitch() function — the same
-         place updateScoreboard() is already called today. If PixiJS fails to
-         load for any reason, the hook call is a guarded no-op and the
-         existing SVG/canvas game is completely unaffected. -->
-    <script src="https://cdn.jsdelivr.net/npm/pixi.js@8.x/dist/pixi.min.js"></script>
-    <script src="https://cdn.jsdelivr.net/npm/gsap@3.12.5/dist/gsap.min.js"></script>
-    <script src="pixi-renderer.js"></script>
-    <script src="pixi-input.js"></script>
 
     <script>
         // ================================================================
@@ -3168,16 +3128,8 @@
 
             drawFielders();
 
-            // Pixi conversion — Step 2: once the Pixi ball sprite is live,
-            // it fully replaces this canvas-drawn ball (per
-            // CONVERSION_GUIDE.md Section 4 item 2: "replace" the ball, not
-            // duplicate it). Falls back to the original canvas ball if Pixi
-            // isn't ready (e.g. CDN blocked), so the game is never without one.
-            const pixiOwnsBall = window.pixiRenderer && window.pixiRenderer.isBallActive && window.pixiRenderer.isBallActive();
-            if (!pixiOwnsBall) {
-                if (state.ball) drawBall(state.ball);
-                if (state.outBall) drawBall(state.outBall);
-            }
+            if (state.ball) drawBall(state.ball);
+            if (state.outBall) drawBall(state.outBall);
 
             ctx.fillStyle = '#fff';
             ctx.font = 'bold 13px sans-serif';
@@ -3185,15 +3137,6 @@
             if (state.currentBowler) {
                 ctx.font = '12px sans-serif';
                 ctx.fillText(`Bowler: ${state.currentBowler.name}`, 10, 36);
-            }
-
-            // Pixi conversion hook (additive, non-invasive — see top of file).
-            // renderMatchFrame() only ever reads `state`; it must never
-            // mutate it. Wrapped in try/catch so a renderer-side issue can
-            // never break the existing (still fully authoritative) game.
-            if (window.pixiRenderer && window.pixiRenderer.renderMatchFrame) {
-                try { window.pixiRenderer.renderMatchFrame(state); }
-                catch (err) { console.warn('[pixiRenderer] renderMatchFrame error (ignored):', err); }
             }
         }
 
@@ -3587,12 +3530,6 @@
             if (typeof SoundFX !== 'undefined') SoundFX.playByBannerType(type);
             clearTimeout(window._bannerTimeout);
             window._bannerTimeout = setTimeout(() => { el.classList.remove('show'); }, 1300);
-
-            // Pixi conversion — Step 2 effects pack (additive, non-invasive).
-            if (window.pixiRenderer && window.pixiRenderer.triggerEffect) {
-                try { window.pixiRenderer.triggerEffect(type); }
-                catch (err) { console.warn('[pixiRenderer] triggerEffect error (ignored):', err); }
-            }
         }
 
         function updateBatTimingNeedle(timing) {
@@ -5104,15 +5041,6 @@
         setBowlDpadEnabled(false);
         animate();
         gameMsg.textContent = 'Select your team and start.';
-
-        // Pixi conversion — Step 1: mount the (currently blank/debug-only)
-        // Pixi layer. Guarded: if this throws (CDN blocked, no WebGL/Canvas2D,
-        // etc.) the real game above has already started and is unaffected.
-        if (window.pixiRenderer && window.pixiRenderer.init) {
-            window.pixiRenderer.init('pixi-layer').catch(function(err) {
-                console.warn('[pixiRenderer] init failed (game continues normally):', err);
-            });
-        }
 
         console.log('🏏 Enhanced T20 Cricket loaded!');
         console.log('✨ Features: Bowler modal, AI bat animation, walking animation, instant scorecard');
