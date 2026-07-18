@@ -131,3 +131,15 @@ Pixi one sitting **offset to the right**.
   stretched non-uniformly by CSS (`width:100%; height:68vh`). Fixed:
   `fitStage()` now mirrors that exact same non-uniform stretch, so every
   coordinate lines up 1:1 with where the old canvas would have drawn it.
+
+## Step 2 bugfix #2 — ball only appearing off to the side (DONE)
+
+After the fix above, the pitch had no ball and one appeared off to the
+side instead. Cause: the alignment code used the canvas's *physical*
+pixel size (`app.renderer.width/height`), which on any high-density
+screen (basically all phones, most laptops) is roughly double the
+*on-screen* size — so every position was calculated about 2x too large,
+pushing the ball off the visible pitch. Fixed: now uses `app.screen`
+(the logical/CSS pixel size) instead, and re-checks the size every frame
+so it self-corrects if the game screen was still hidden (0 size) at the
+moment Pixi first initialized.

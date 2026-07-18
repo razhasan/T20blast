@@ -73,14 +73,16 @@ const pixiRenderer = (function () {
 
     function fitStage() {
         if (!app || !world) return;
-        // Match the underlying #pitch-canvas exactly: it's drawn at a fixed
-        // 500x560 internal resolution but stretched by CSS to fill its
-        // container (width:100%, height:68vh) — NOT uniformly, so we mirror
-        // that same non-uniform stretch here rather than letterboxing.
-        // This keeps every state.ball.x/y coordinate lined up 1:1 with
-        // where the old canvas would have drawn it.
-        const scaleX = app.renderer.width / BASE_WIDTH;
-        const scaleY = app.renderer.height / BASE_HEIGHT;
+        // IMPORTANT: use app.screen (logical/CSS pixel size), not
+        // app.renderer.width/height (physical pixel size, multiplied by
+        // devicePixelRatio). Using the physical size here was the bug that
+        // pushed the ball off to the side on high-DPI (retina/most phones)
+        // screens — it made the scale ~2x too large.
+        const w = app.screen.width;
+        const h = app.screen.height;
+        if (!w || !h) return; // container not laid out yet (e.g. still hidden) — try again next frame
+        const scaleX = w / BASE_WIDTH;
+        const scaleY = h / BASE_HEIGHT;
         world.scale.set(scaleX, scaleY);
         basePos.x = 0;
         basePos.y = 0;
@@ -259,6 +261,7 @@ const pixiRenderer = (function () {
     // ---- Public: called once per frame from the end of drawPitch() ------
     function renderMatchFrame(state) {
         if (!ready || !app) return;
+        fitStage(); // cheap; self-corrects if the container's size changed since last frame
 
         if (state && state.ball && typeof state.ball.x === 'number') {
             positionBallAndTrail(state.ball);
