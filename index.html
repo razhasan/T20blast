@@ -3168,8 +3168,16 @@
 
             drawFielders();
 
-            if (state.ball) drawBall(state.ball);
-            if (state.outBall) drawBall(state.outBall);
+            // Pixi conversion — Step 2: once the Pixi ball sprite is live,
+            // it fully replaces this canvas-drawn ball (per
+            // CONVERSION_GUIDE.md Section 4 item 2: "replace" the ball, not
+            // duplicate it). Falls back to the original canvas ball if Pixi
+            // isn't ready (e.g. CDN blocked), so the game is never without one.
+            const pixiOwnsBall = window.pixiRenderer && window.pixiRenderer.isBallActive && window.pixiRenderer.isBallActive();
+            if (!pixiOwnsBall) {
+                if (state.ball) drawBall(state.ball);
+                if (state.outBall) drawBall(state.outBall);
+            }
 
             ctx.fillStyle = '#fff';
             ctx.font = 'bold 13px sans-serif';

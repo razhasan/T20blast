@@ -72,11 +72,18 @@ const pixiRenderer = (function () {
     }
 
     function fitStage() {
-        if (!app) return;
-        const scale = Math.min(app.renderer.width / BASE_WIDTH, app.renderer.height / BASE_HEIGHT);
-        world.scale.set(scale);
-        basePos.x = (app.renderer.width - BASE_WIDTH * scale) / 2;
-        basePos.y = (app.renderer.height - BASE_HEIGHT * scale) / 2;
+        if (!app || !world) return;
+        // Match the underlying #pitch-canvas exactly: it's drawn at a fixed
+        // 500x560 internal resolution but stretched by CSS to fill its
+        // container (width:100%, height:68vh) — NOT uniformly, so we mirror
+        // that same non-uniform stretch here rather than letterboxing.
+        // This keeps every state.ball.x/y coordinate lined up 1:1 with
+        // where the old canvas would have drawn it.
+        const scaleX = app.renderer.width / BASE_WIDTH;
+        const scaleY = app.renderer.height / BASE_HEIGHT;
+        world.scale.set(scaleX, scaleY);
+        basePos.x = 0;
+        basePos.y = 0;
         applyWorldPosition();
     }
 
@@ -278,6 +285,7 @@ const pixiRenderer = (function () {
         init,
         renderMatchFrame,
         triggerEffect,
+        isBallActive: () => ready,
         resize: fitStage,
         get app() { return app; },
         get layers() { return layers; },

@@ -110,3 +110,24 @@ never a replacement.
 Character steps (3/4/6) can use flat-color placeholder shapes too — they
 don't strictly need `ASSET_SPEC.md` artwork to start looking better than
 today's SVG figures, real art can swap in later with no code changes.
+
+---
+
+## Step 2 bugfix — duplicate ball + misalignment (DONE)
+
+After deploying, two issues showed up: **two balls on screen**, and the
+Pixi one sitting **offset to the right**.
+
+- **Duplicate ball:** the original canvas (`drawBall()` inside
+  `drawPitch()`) was still drawing its own ball every frame, same as
+  before Pixi existed — I'd added the new Pixi ball *alongside* it instead
+  of having it take over, contrary to the guide's own Step 2 wording
+  ("**replace** just the ball trajectory"). Fixed: `drawPitch()` now skips
+  its own ball-drawing lines once `pixiRenderer.isBallActive()` is true, and
+  falls back to drawing them itself if Pixi didn't initialize (e.g. CDN
+  blocked) — so there's always exactly one ball, never zero.
+- **Offset position:** the Pixi layer was scaling itself with a
+  letterboxed (uniform, centered) fit, while the real `#pitch-canvas` is
+  stretched non-uniformly by CSS (`width:100%; height:68vh`). Fixed:
+  `fitStage()` now mirrors that exact same non-uniform stretch, so every
+  coordinate lines up 1:1 with where the old canvas would have drawn it.
